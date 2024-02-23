@@ -1,0 +1,2 @@
+class TwitchUser < ApplicationRecord
+end
