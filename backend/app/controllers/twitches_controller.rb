@@ -1,9 +1,12 @@
 class TwitchesController < ApplicationController
   def get_clips
-    # 初期設定
+
+    # 基本設定
     header = { "Authorization" => ENV["APP_ACCESS_TOKEN"],  "Client-id" => ENV["CLIENT_ID"] }
     base_uri = "https://api.twitch.tv/helix/clips?broadcaster_id=44525650&first=100"
     all = params[:all] || "false"
+
+    # 時間設定
     n = 10 # 何時間前からの情報を取得するか
     current_datetime = DateTime.now
     current_rfc3339 = current_datetime.strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -12,7 +15,7 @@ class TwitchesController < ApplicationController
 
     after = nil
     loop do
-      # allの場合は全期間、そうでないときは4時間前までのクリップを取得
+      # allの場合は全期間、そうでないときはn時間前までのクリップを取得
       if all == "true"
         uri = after ? "#{base_uri}&after=#{after}" : "#{base_uri}"
       else
@@ -22,14 +25,33 @@ class TwitchesController < ApplicationController
       res = request_get(header, uri)
       after = res["pagination"]["cursor"]
       res["data"].each do |data|
-        @clip = Clip.new(id:data["id"], broadcaster_id:data["broadcaster_id"], creator_id:data["creator_id"], game_id:data["game_id"], language:data["language"], title:data["title"], clip_created_at:data["created_at"], thumbnail_url:data["thumbnail_url"], duration:data["duration"])
-        @clip.save
-        @clip_view_count = @clip.build_clip_view_count(view_count: data["view_count"])
-        if @clip_view_count.save
-          # pass
-        else
-          @clip_view_count = ClipViewCount.find_by(clip_id: data["id"])
-          @clip_view_count.update(view_count: data["view_count"])
+
+        # 重複チェック
+        if !ClipTwitchId.find_by(clip_twitch_id: data["id"])
+
+          # clipの主なデータをテーブルに保存
+          @clip = Clip.new(broadcaster_id: data["broadcaster_id"], 
+                           creator_id: data["creator_id"], 
+                           game_id: data["game_id"], 
+                           language: data["language"], 
+                           title: data["title"], 
+                           clip_created_at: data["created_at"], 
+                           thumbnail_url: data["thumbnail_url"], 
+                           duration: data["duration"])
+          @clip.save
+
+          # clip_twitch_idは別テーブルで保存
+          @clip_twitch_id = @clip.build_clip_twitch_id(clip_twitch_id: data["id"])
+          @clip_twitch_id.save
+
+          # 視聴数は別テーブルで保存
+          @clip_view_count = @clip.build_clip_view_count(view_count: data["view_count"])
+          if @clip_view_count.valid?
+            @clip_view_count.save
+          else
+            @clip_view_count = ClipViewCount.find_by(clip_id: @clip.id)
+            @clip_view_count.update(view_count: data["view_count"])
+          end
         end
       end
       break
