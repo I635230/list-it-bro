@@ -1,2 +1,0 @@
-class TwitchUser < ApplicationRecord
-end

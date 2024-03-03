@@ -1,10 +1,40 @@
 class TwitchesController < ApplicationController
-  def get_clips
+  before_action :certificated, only: %i[get_follow_broadcasters]
+  before_action :set_header, only: %i[get_clip_broadcaster get_games get_clips]
 
+  # clipIdからbroadcasterIdを取得する
+  def get_clip_broadcaster
+    clip_id = params[:clip_id]
+
+    uri = "https://api.twitch.tv/helix/clips?id=#{clip_id}"
+    res = request_get(@header, uri)
+
+    data = res["data"][0]
+
+    # jaチェック
+    return if data["language"] != "ja"
+
+    broadcaster_id = data["broadcaster_id"]
+    render status: :ok, json: broadcaster_id
+  end
+
+  # userがfollow中のbroadcastersのデータを取得する
+  def get_follow_broadcasters
+    header = { "Authorization" => @current_user.user_access_token, "Client-id" => ENV["CLIENT_ID"] }
+    user_id = @current_uuser.id
+    uri = "https://api.twitch.tv/helix/channels/followed?user_id=#{user_id}&first=100"
+    res = request_get(header, uri)
+    render status: :ok, json: res["data"]
+  end
+
+  # あるbroadcasterのクリップを取得する
+  def get_clips
     # 基本設定
-    header = { "Authorization" => ENV["APP_ACCESS_TOKEN"],  "Client-id" => ENV["CLIENT_ID"] }
-    base_uri = "https://api.twitch.tv/helix/clips?broadcaster_id=44525650&first=100"
-    all = params[:all] || "false"
+    broadcaster_id = params[:broadcaster_id]
+    @broadcaster = Broadcaster.find(broadcaster_id)
+
+    base_uri = "https://api.twitch.tv/helix/clips?broadcaster_id=#{broadcaster_id}&first=100"
+    all = params[:all]
 
     # 時間設定
     n = 10 # 何時間前からの情報を取得するか
@@ -16,58 +46,66 @@ class TwitchesController < ApplicationController
     after = nil
     loop do
       # allの場合は全期間、そうでないときはn時間前までのクリップを取得
-      if all == "true"
+      if all == true
         uri = after ? "#{base_uri}&after=#{after}" : "#{base_uri}"
       else
         uri = after ? "#{base_uri}&after=#{after}&started_at=#{n_hour_ago_rfc3339}&ended_at=#{current_rfc3339}" : "#{base_uri}&started_at=#{n_hour_ago_rfc3339}&ended_at=#{current_rfc3339}"
       end
 
-      res = request_get(header, uri)
+      res = request_get(@header, uri)
       after = res["pagination"]["cursor"]
+      view_count = 2000
       res["data"].each do |data|
 
-        # 重複チェック
-        if !ClipTwitchId.find_by(clip_twitch_id: data["id"])
+        # game_idが空のときは、Undefinedに設定
+        data["game_id"] = 0 if data["game_id"] == ""
 
-          # clipの主なデータをテーブルに保存
-          @clip = Clip.new(broadcaster_id: data["broadcaster_id"], 
-                           creator_id: data["creator_id"], 
-                           game_id: data["game_id"], 
-                           language: data["language"], 
-                           title: data["title"], 
-                           clip_created_at: data["created_at"], 
-                           thumbnail_url: data["thumbnail_url"], 
-                           duration: data["duration"])
+        # gameの存在確認
+        create_game(data["game_id"]) if !Game.find_by(id: data["game_id"])
+
+        # clipの主なデータをテーブルに保存
+        @clip = @broadcaster.clips.build(slug: data["id"],
+                                         broadcaster_name: data["broadcaster_name"],
+                                         creator_id: data["creator_id"],
+                                         creator_name: data["creator_name"],
+                                         game_id: data["game_id"],
+                                         language: data["language"],
+                                         title: data["title"],
+                                         clip_created_at: data["created_at"],
+                                         thumbnail_url: data["thumbnail_url"],
+                                         duration: data["duration"],
+                                         view_count: data["view_count"])
+        if @clip.valid?
           @clip.save
-
-          # clip_twitch_idは別テーブルで保存
-          @clip_twitch_id = @clip.build_clip_twitch_id(clip_twitch_id: data["id"])
-          @clip_twitch_id.save
-
-          # 視聴数は別テーブルで保存
-          @clip_view_count = @clip.build_clip_view_count(view_count: data["view_count"])
-          if @clip_view_count.valid?
-            @clip_view_count.save
-          else
-            @clip_view_count = ClipViewCount.find_by(clip_id: @clip.id)
-            @clip_view_count.update(view_count: data["view_count"])
-          end
+        else
+          @clip = Clip.friendly.find(data["id"])
+          @clip.update(view_count: data["view_count"])
         end
+        view_count = data["view_count"]
       end
-      break
-      # break if after.nil? || after.empty?
+      # break if after.nil? || after.empty? || view_count < 5000
+      break if after.nil? || after.empty?
     end
-    render status: :ok # 仮置きのok
+    render status: :created # 仮置きのcreated
   end
-  
-  private
-    def request_get(header, uri)
-      res = HTTP[header].get(uri)
-      JSON.parse(res.to_s)
-    end
 
-    def request_post(header, uri, body)
-      res = HTTP[header].get(uri, json: body)
-      JSON.parse(res.to_s)
+  private
+
+    # 特定のgameデータを取得
+    def create_game(id)
+      uri = "https://api.twitch.tv/helix/games?id=#{id}"
+
+      # メイン処理
+      res = request_get(@header, uri)
+      data = res["data"][0]
+
+      # 重複チェック
+      return if Game.find_by(id: data["id"])
+
+      # gameデータをテーブルに保存
+      @game = Game.new(id: data["id"],
+                      name: data["name"],
+                      box_art_url: data["box_art_url"])
+      @game.save
     end
 end

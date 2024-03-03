@@ -1,6 +1,6 @@
 require "test_helper"
 
-class ClipViewCountTest < ActiveSupport::TestCase
+class BroadcasterTest < ActiveSupport::TestCase
   # test "the truth" do
   #   assert true
   # end

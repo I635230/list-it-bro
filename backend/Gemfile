@@ -13,6 +13,8 @@ gem "rack-cors"
 gem "http"
 gem "dotenv-rails"
 gem "active_model_serializers"
+gem "friendly_id"
+gem "will_paginate"
 
 group :development, :test do
   gem "debug", platforms: %i[ mri mingw x64_mingw ]

@@ -1,3 +1,14 @@
 {
-  "extends": "next/core-web-vitals"
+  "extends": ["next", "next/core-web-vitals", "prettier", "next/babel"],
+  "rules": {
+    "object-shorthand": "error",
+    "react/jsx-curly-brace-presence": "error",
+    "react/self-closing-comp": [
+      "error",
+      {
+        "component": true,
+        "html": false
+      }
+    ]
+  }
 }

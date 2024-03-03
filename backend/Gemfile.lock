@@ -101,6 +101,8 @@ GEM
     ffi-compiler (1.0.1)
       ffi (>= 1.0.0)
       rake
+    friendly_id (5.5.1)
+      activerecord (>= 4.0.0)
     globalid (1.2.1)
       activesupport (>= 6.1)
     http (5.2.0)
@@ -264,6 +266,7 @@ GEM
     websocket-driver (0.7.6)
       websocket-extensions (>= 0.1.0)
     websocket-extensions (0.1.5)
+    will_paginate (4.0.0)
     yard (0.9.34)
     zeitwerk (2.6.13)
 
@@ -276,6 +279,7 @@ DEPENDENCIES
   bootsnap
   debug
   dotenv-rails
+  friendly_id
   http
   mysql2 (~> 0.5)
   puma (~> 5.0)
@@ -289,6 +293,7 @@ DEPENDENCIES
   rubocop-rails
   solargraph
   tzinfo-data
+  will_paginate
 
 RUBY VERSION
    ruby 3.2.2p53

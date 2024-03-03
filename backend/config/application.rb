@@ -8,6 +8,7 @@ Bundler.require(*Rails.groups)
 
 module Api
   class Application < Rails::Application
+    config.middleware.delete ActionDispatch::HostAuthorization
     # Initialize configuration defaults for originally generated Rails version.
     config.load_defaults 7.0
 
@@ -15,7 +16,7 @@ module Api
     #
     # These settings can be overridden in specific environments using the files
     # in config/environments, which are processed later.
-    # 
+    #
     config.time_zone = 'Asia/Tokyo'
     # config.eager_load_paths << Rails.root.join("extras")
 
