@@ -6,33 +6,36 @@ class PlaylistsController < ApplicationController
   def index
     playlists = fileter_playlists
     playlists = apply_term(playlists)
-    @playlists = apply_order(playlists)
-    render status: :ok, json: @playlists
+    apply_order(playlists)
+    render status: :ok, json: @playlists, each_serializer: PlaylistSerializer, meta: {elementsCount: @playlists_all_page.size, limit: 20}, adapter: :json
   end
 
   # 新しいプレイリストを作成
   def create
     @playlist = @current_user.playlists.build(playlist_params)
     @playlist.save
-    render status: :created, json: { playlist: "playlist/create" }
+    render status: :created
   end
 
   # 特定のプレイリストを表示
   def show
-    if @playlist.clips.count == 0
-      first_clip_thumbnai_url = "" # TODO: 真っ黒な画像用意しておく。
-    else
-      first_clip_thumbnai_url = @playlist.clips.first.thumbnail_url # TODO: 実際にはorderの先頭から取り出す必要あり
-    end
-    render status: :ok, json: @playlist, first_clip_thumbnai_url: first_clip_thumbnai_url
+    render status: :ok, json: @playlist
   end
 
   # 特定のプレイリストを編集
   def update
+    if @playlist.update(playlist_params)
+      render status: :created, json: @playlist
+    else
+      render status: :unprocessable_entity, json: @playlist.errors
+    end
   end
 
   # 特定のプレイリストを削除
   def destroy
+    # TODO: 正しいユーザーかを確認する処理
+    @playlist.destroy
+    render status: :no_content
   end
 
   # クリップを追加
@@ -63,6 +66,7 @@ class PlaylistsController < ApplicationController
     def fileter_playlists
       # creatorでソート
       if !params[:creator].nil?
+        playlists = Playlist.joins(:user).where(users: { display_name: params[:creator] })
 
       # titleでソート
       elsif !params[:title].nil?
@@ -112,29 +116,41 @@ class PlaylistsController < ApplicationController
     def apply_order(playlists)
       # お気に入り登録が多い順
       if params[:order] == "fav_desc"
-        ids = playlists.joins(:favorites).group(:playlist_id).order('count_user_id DESC').count(:user_id).keys
+        playlists = playlists.sort_by { |playlist| playlist.favorites.length }.reverse
+        ids = playlists.map(&:id)
         playlists = Playlist.in_order_of(:id, ids)
 
       # お気に入り登録が少ない順
       elsif params[:order] == "fav_asc"
-        ids = playlists.joins(:favorites).group(:playlist_id).order('count_user_id ASC').count(:user_id).keys
+        playlists = playlists.sort_by { |playlist| playlist.favorites.length }
+        ids = playlists.map(&:id)
         playlists = Playlist.in_order_of(:id, ids)
 
       # 日付の新しい順
       elsif params[:order] == "date_desc"
-        playlists = playlists.order(created_at: :desc)
+        playlists = playlists.sort_by{ |playlist| playlist.created_at }.reverse
+        ids = playlists.map(&:id)
+        playlists = Playlist.in_order_of(:id, ids)
 
       # 日付の古い順
       elsif params[:order] == "date_asc"
-        playlists = playlists.order(created_at: :asc)
+        playlists = playlists.sort_by{ |playlist| playlist.created_at }
+        ids = playlists.map(&:id)
+        playlists = Playlist.in_order_of(:id, ids)
 
       # 指定なし(お気に入り登録が多い順)
       else
-        ids = playlists.joins(:favorites).group(:playlist_id).order('count_user_id DESC').count(:user_id).keys
+        playlists = playlists.sort_by { |playlist| playlist.favorites.length }.reverse
+        ids = playlists.map(&:id)
         playlists = Playlist.in_order_of(:id, ids)
       end
 
-      playlists = playlists.paginate(page: params[:page], per_page: 20)
+      if playlists.empty?
+        @playlists = playlists
+        @playlists_all_page = playlists
+      else
+        @playlists = playlists.paginate(page: params[:page], per_page: 20)
+        @playlists_all_page = playlists
+      end
     end
-
 end

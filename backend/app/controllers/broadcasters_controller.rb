@@ -1,6 +1,10 @@
 class BroadcastersController < ApplicationController
   before_action :set_header, only: %i[create]
 
+  def index
+    render status: :ok, json: Broadcaster.all.map(&:display_name)
+  end
+
   def create
     # 準備
     broadcaster_id = params[:broadcaster_id]

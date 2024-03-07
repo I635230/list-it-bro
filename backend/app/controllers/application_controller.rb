@@ -14,6 +14,7 @@ class ApplicationController < ActionController::API
     end
   end
 
+  # TODO: headerの宣言ここで一括でできないなら、全部個別で書いた方がいいかもなー
   # header変数の定義
   def set_header
     @header = { "Authorization" => ENV["APP_ACCESS_TOKEN"],  "Client-id" => ENV["CLIENT_ID"] }

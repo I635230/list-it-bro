@@ -1,14 +1,14 @@
 class ClipsController < ApplicationController
   before_action :certificated, only: %i[index show]
 
-  # TODO: 流石にBroadcasterとかは予測変換だったり、タグみたいなやつから選んだりする感じで検索できるようにしたくはある
+  # TODO: 流石にBroadcasterとGameは予測変換だったり、タグみたいなやつから選んだりする感じで検索できるようにしたくはある
 
   # 検索結果を表示
   def index
     clips = filter_clips
     clips = apply_term(clips)
-    @clips = apply_order(clips)
-    render status: :ok, json: @clips
+    apply_order(clips)
+    render status: :ok, json: @clips, each_serializer: ClipSerializer, meta: {elementsCount: @clips_all_page.size, limit: 20}, adapter: :json
   end
 
   # 特定のclipを表示
@@ -76,24 +76,39 @@ class ClipsController < ApplicationController
     def apply_order(clips)
       # 視聴数が多い順
       if params[:order] == "view_desc"
-        clips = clips.order(view_count: :desc)
+        clips = clips.sort_by{ |clip| clip.view_count }.reverse
+        ids = clips.map(&:id)
+        clips = Clip.in_order_of(:id, ids)
 
       # 視聴数が少ない順
       elsif params[:order] == "view_asc"
-        clips = clips.order(view_count: :asc)
+        clips = clips.sort_by{ |clip| clip.view_count }
+        ids = clips.map(&:id)
+        clips = Clip.in_order_of(:id, ids)
 
       # 日付の新しい順
       elsif params[:order] == "date_desc"
-        clips = clips.order(clip_created_at: :desc)
+        clips = clips.sort_by{ |clip| clip.clip_created_at }.reverse
+        ids = clips.map(&:id)
+        clips = Clip.in_order_of(:id, ids)
 
       # 日付の古い順
       elsif params[:order] == "date_asc"
-        clips = clips.order(clip_created_at: :asc)
+        clips = clips.sort_by{ |clip| clip.clip_created_at }
+        ids = clips.map(&:id)
+        clips = Clip.in_order_of(:id, ids)
 
       # 指定なし(視聴数が多い順)
       else
         # pass
       end
-      clips = clips.paginate(page: params[:page], per_page: 20)
+
+      if clips.empty?
+        @clips_all_page = clips
+        @clips = clips
+      else
+        @clips_all_page = clips
+        @clips = clips.paginate(page: params[:page], per_page: 20)
+      end
     end
 end

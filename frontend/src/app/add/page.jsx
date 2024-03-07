@@ -5,6 +5,7 @@ import { addClipInfo } from '@/app/lib/action'
 
 export default function Page() {
   const [error, formAction] = useFormState(addClipInfo, '')
+
   return (
     <>
       <form action={formAction}>

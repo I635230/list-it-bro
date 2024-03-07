@@ -3,8 +3,9 @@ Rails.application.routes.draw do
     get "/get_games", to: "twitches#get_games"
     post "/get_clips", to: "twitches#get_clips"
     post "/get_clip_broadcaster", to: "twitches#get_clip_broadcaster"
-    # resources :users, only: %i[]
-    resources :broadcasters, only: %i[create]
+    resources :users, only: %i[index]
+    resources :games, only: %i[index]
+    resources :broadcasters, only: %i[index create]
     resources :authentications, only: %i[create]
     resources :playlists, only: %i[index show create update destroy] do
       member do
