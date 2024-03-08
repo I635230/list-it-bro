@@ -6,8 +6,8 @@ import {
   fetchBroadcastersName,
   fetchUsersName,
   fetchGamesName,
+  fetchResults,
 } from '@/app/lib/data'
-import { searchAction } from '@/app/lib/action'
 
 export default async function DataFetcher({ searchParams }) {
   const broadcastersName = await fetchBroadcastersName()
@@ -20,7 +20,7 @@ export default async function DataFetcher({ searchParams }) {
         usersName={usersName}
         gamesName={gamesName}
       />
-      <Result searchAction={searchAction} query={searchParams} />
+      <Result fetchResults={fetchResults} query={searchParams} />
     </>
   )
 }

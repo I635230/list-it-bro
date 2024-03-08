@@ -6,12 +6,44 @@ export default function Select({ label, options, name, queryLabel }) {
 
   function changeQuery(newValue) {
     const params = new URLSearchParams(searchParams)
-    params.set('page', '1')
     if (newValue) {
       params.set(queryLabel, newValue)
     } else {
       params.delete(queryLabel)
     }
+
+    // typeの変更時に、可変プルダウンの値を初期化
+    if (queryLabel == 'type') {
+      const typeValue = params.get(queryLabel)
+
+      let orderValue
+      let targetValue
+
+      // type=playlistのとき
+      if (typeValue == 'playlist') {
+        orderValue = 'fav_desc'
+        targetValue = 'title'
+      }
+
+      // type=clipのとき
+      if (typeValue == 'clip') {
+        orderValue = 'view_desc'
+        targetValue = 'title'
+      }
+
+      // eachValue
+      for (let [eachLabel, eachValue] of [
+        ['order', orderValue],
+        ['target', targetValue],
+      ]) {
+        if (eachValue) {
+          params.set(eachLabel, eachValue)
+        } else {
+          params.delete(eachLabel)
+        }
+      }
+    }
+
     replace(`/search?${params.toString()}`)
   }
 

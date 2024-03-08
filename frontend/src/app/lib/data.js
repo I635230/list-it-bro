@@ -2,6 +2,61 @@
 
 import { cookies } from 'next/headers'
 
+// 検索
+export async function fetchResults(query) {
+  try {
+    // 準備
+    const type = query['type'] || 'playlist'
+    const term = query['term'] || 'all'
+    const order = query['order'] || 'fav_desc'
+    const target = query['target'] || 'title'
+    const page = query['page'] || '1'
+    let keywords = query['field'] || ''
+
+    if (keywords == null) {
+      keywords = field
+    }
+
+    let url = process.env.API_BASE_URL
+
+    // type
+    if (type == 'playlist') {
+      url += '/playlists'
+    } else if (type == 'clip') {
+      url += '/clips'
+    }
+
+    // term
+    url += `?term=${term}`
+
+    // order
+    url += `&order=${order}`
+
+    // target
+    url += `&${target}=${keywords}`
+
+    // page
+    url += `&page=${page}`
+
+    // TODO
+    console.log(url)
+
+    const response = await fetch(`${url}`)
+
+    if (!response.ok) {
+      throw new Error('検索結果の取得に失敗しました')
+    }
+
+    const data = await response.json()
+
+    // 出力
+    if (data.meta.elementCount == 0) return null
+    else return data
+  } catch (error) {
+    throw new Error(error)
+  }
+}
+
 // clipを取得するメソッド
 export async function fetchClip() {}
 

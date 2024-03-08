@@ -1,16 +1,16 @@
 'use client'
 
-// import { useFormState } from 'react-dom'
-import { useSearchParams, usePathname } from 'next/navigation'
-// import { searchAction } from '@/app/lib/action'
+import { useDebouncedCallback } from 'use-debounce'
+import { useSearchParams, usePathname, useRouter } from 'next/navigation'
 import TypeSelect from '@/app/ui/search/select/type_select'
 import TermSelect from '@/app/ui/search/select/term_select'
 import OrderSelect from '@/app/ui/search/select/order_select'
 import TargetSelect from '@/app/ui/search/select/target_select'
-// import ClipsResult from '@/app/ui/search/result/clips_result'
-// import PlaylistsResult from '@/app/ui/search/result/playlists_result'
 
 export default function Search({ broadcastersName, usersName, gamesName }) {
+  // router
+  const { replace } = useRouter()
+
   // page
   const searchParams = useSearchParams()
   const currentPage = searchParams.get('page') || 1
@@ -18,25 +18,28 @@ export default function Search({ broadcastersName, usersName, gamesName }) {
   // path
   const pathname = usePathname()
 
-  // select
-
-  // results
-  // const [results, formAction] = useFormState(searchAction, '')
+  const changeQuery = useDebouncedCallback((newValue) => {
+    const params = new URLSearchParams(searchParams)
+    if (newValue) {
+      params.set('field', newValue)
+    } else {
+      params.delete('field')
+    }
+    replace(`/search?${params.toString()}`)
+  }, 300)
 
   return (
     <>
-      <form>
-        <TypeSelect />
-        <TermSelect />
-        <OrderSelect type={searchParams.get('type') || 'playlist'} />
-        <TargetSelect type={searchParams.get('type') || 'playlist'} />
-        <input
-          type="text"
-          name="search_field"
-          value={searchParams.get('field')}
-        />
-        <button type="submit">検索</button>
-      </form>
+      <TypeSelect />
+      <TermSelect />
+      <OrderSelect type={searchParams.get('type') || 'playlist'} />
+      <TargetSelect type={searchParams.get('type') || 'playlist'} />
+      <input
+        onChange={(e) => {
+          changeQuery(e.target.value)
+        }}
+        defaultValue={searchParams.get('field')?.toString() || ''}
+      />
     </>
   )
 }
